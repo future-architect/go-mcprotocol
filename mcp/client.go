@@ -9,6 +9,7 @@ import (
 
 type Client interface {
 	Read(deviceName string, offset, numPoints int64) ([]byte, error)
+	Write(deviceName string, offset int64, writeData []byte) error
 	HealthCheck() error
 }
 
@@ -111,7 +112,33 @@ func (c *client3E) Read(deviceName string, offset, numPoints int64) ([]byte, err
 	return readBuff[:readLen], nil
 }
 
+// Write is send write command to remote plc by mc protocol
+// deviceName is device code name like 'D' register.
+// offset is device offset addr.
+// writeData is data to write.
+// If writeData is larger than 4 bytes, the fifth and subsequent bytes are ignored.
 func (c *client3E) Write(deviceName string, offset int64, writeData []byte) error {
-	// TODO
+	requestStr := c.stn.BuildWriteRequest(deviceName, offset, writeData)
+	payload, err := hex.DecodeString(requestStr)
+	if err != nil {
+		return err
+	}
+	conn, err := net.DialTCP("tcp", nil, c.tcpAddr)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	// Send message
+	if _, err = conn.Write(payload); err != nil {
+		return err
+	}
+	// FIX_ME: Receive return message
+	/*
+	   readBuff := make([]byte, 30)
+	   readLen, err := conn.Read(readBuff)
+	   if err != nil {
+	       return err
+	   }
+	*/
 	return nil
 }
