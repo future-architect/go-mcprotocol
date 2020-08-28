@@ -43,6 +43,20 @@ func TestClient3E_Read(t *testing.T) {
 
 }
 
+func TestClient3E_Write(t *testing.T) {
+	// running only when there is and plc that can be accepted mc protocol
+
+	client, err := New3EClient("10.23.3.117", 1280, NewLocalStation())
+	if err != nil {
+		t.Fatalf("PLC does not exists? %v", err)
+	}
+
+	err = client.Write("D", 100, []byte("test"))
+	if err != nil {
+		t.Fatalf("unexpected mcp write err: %v", err)
+	}
+}
+
 func TestClient3E_Ping(t *testing.T) {
 	// running only when there is and plc that can be accepted mc protocol
 
