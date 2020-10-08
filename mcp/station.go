@@ -135,7 +135,7 @@ func (h *station) BuildReadRequest(deviceName string, offset, numPoints int64) s
 // numPoints is number of write device points.
 // writeData is the data to be written. If writeData is larger than 2*numPoints bytes,
 // data larger than 2*numPoints bytes is ignored.
-func (h *station) BuildWriteRequest(deviceName string, offset ,numPoints int64, writeData []byte) string {
+func (h *station) BuildWriteRequest(deviceName string, offset, numPoints int64, writeData []byte) string {
 
 	// get device symbol hex layout
 	deviceCode := deviceCodes[deviceName]
