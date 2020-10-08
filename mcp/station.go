@@ -132,21 +132,32 @@ func (h *station) BuildReadRequest(deviceName string, offset, numPoints int64) s
 // deviceName is device code name like 'D' register.
 // offset is device offset addr.
 // writeData is data to write.
-// If writeData is larger than 4 bytes, the fifth and subsequent bytes are ignored.
-func (h *station) BuildWriteRequest(deviceName string, offset int64, writeData []byte) string {
+// numPoints is number of write device points.
+// writeData is the data to be written. If writeData is larger than 2*numPoints bytes,
+// data larger than 2*numPoints bytes is ignored.
+func (h *station) BuildWriteRequest(deviceName string, offset ,numPoints int64, writeData []byte) string {
+
 	// get device symbol hex layout
 	deviceCode := deviceCodes[deviceName]
+
 	// offset convert to little endian layout
 	// MELSECコミュニケーションプロトコル リファレンス(p67) MELSEC-Q/L: 3[byte], MELSEC iQ-R: 4[byte]
 	offsetBuff := new(bytes.Buffer)
 	_ = binary.Write(offsetBuff, binary.LittleEndian, offset)
 	offsetHex := fmt.Sprintf("%X", offsetBuff.Bytes()[0:3]) // 仮にQシリーズとするので3byte trim
+
 	// convert write data to little endian word
 	writeBuff := new(bytes.Buffer)
 	_ = binary.Write(writeBuff, binary.LittleEndian, writeData)
-	writeHex := fmt.Sprintf("%X", writeBuff.Bytes()[0:4]) // 4byte固定
+	writeHex := fmt.Sprintf("%X", writeBuff.Bytes()[0:2*numPoints]) // 2 byte per 1 device point
+
+	// write points
+	pointsBuff := new(bytes.Buffer)
+	_ = binary.Write(pointsBuff, binary.LittleEndian, numPoints)
+	points := fmt.Sprintf("%X", pointsBuff.Bytes()[0:2]) // 2byte固定
+
 	// data length
-	requestCharLen := len(MONITORING_TIMER+WRITE_COMMAND+WRITE_SUB_COMMAND+deviceCode+offsetHex+writeHex) / 2 // 1byte=2char
+	requestCharLen := len(MONITORING_TIMER+WRITE_COMMAND+WRITE_SUB_COMMAND+deviceCode+offsetHex+points+writeHex) / 2 // 1byte=2char
 	dataLenBuff := new(bytes.Buffer)
 	_ = binary.Write(dataLenBuff, binary.LittleEndian, int64(requestCharLen))
 	dataLen := fmt.Sprintf("%X", dataLenBuff.Bytes()[0:2]) // 2byte固定
@@ -161,6 +172,7 @@ func (h *station) BuildWriteRequest(deviceName string, offset int64, writeData [
 		WRITE_SUB_COMMAND +
 		offsetHex +
 		deviceCode +
+		points +
 		writeHex
 }
 
