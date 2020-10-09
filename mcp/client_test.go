@@ -51,7 +51,7 @@ func TestClient3E_Write(t *testing.T) {
 		t.Fatalf("PLC does not exists? %v", err)
 	}
 
-	err = client.Write("D", 100, []byte("test"))
+	_, err = client.Write("D", 100, 4, []byte("test"))
 	if err != nil {
 		t.Fatalf("unexpected mcp write err: %v", err)
 	}
