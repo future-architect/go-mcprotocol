@@ -31,4 +31,3 @@ func TestParser_Do(t *testing.T) {
 		t.Errorf("parse Resp differs: (-got +want)\n%s", diff)
 	}
 }
-
