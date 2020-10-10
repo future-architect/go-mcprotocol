@@ -2,14 +2,36 @@ package mcp
 
 import (
 	"encoding/hex"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 )
 
+var (
+	testPLCHost string
+	testPLCPort int
+)
+
+func init() {
+	testPLCHost = os.Getenv("PLC_TEST_HOST")
+	if p := os.Getenv("PLC_TEST_PORT"); p != "" {
+		if port, err := strconv.Atoi(p); err == nil {
+			testPLCPort = port
+		}
+	}
+}
+
 func TestClient3E_Read(t *testing.T) {
 	// running only when there is and plc that can be accepted mc protocol
+	if testPLCHost == "" {
+		t.Skip("environment variable PLC_TEST_HOST is not set")
+	}
+	if testPLCPort == 0 {
+		t.Skip("environment variable PLC_TEST_PORT is not set")
+	}
 
-	client, err := New3EClient("10.23.3.117", 1280, NewLocalStation())
+	client, err := New3EClient(testPLCHost, testPLCPort, NewLocalStation())
 	if err != nil {
 		t.Fatalf("PLC does not exists? %v", err)
 	}
@@ -45,13 +67,19 @@ func TestClient3E_Read(t *testing.T) {
 
 func TestClient3E_Write(t *testing.T) {
 	// running only when there is and plc that can be accepted mc protocol
+	if testPLCHost == "" {
+		t.Skip("environment variable PLC_TEST_HOST is not set")
+	}
+	if testPLCPort == 0 {
+		t.Skip("environment variable PLC_TEST_PORT is not set")
+	}
 
-	client, err := New3EClient("10.23.3.117", 1280, NewLocalStation())
+	client, err := New3EClient(testPLCHost, testPLCPort, NewLocalStation())
 	if err != nil {
 		t.Fatalf("PLC does not exists? %v", err)
 	}
 
-	err = client.Write("D", 100, []byte("test"))
+	_, err = client.Write("D", 100, 4, []byte("test"))
 	if err != nil {
 		t.Fatalf("unexpected mcp write err: %v", err)
 	}
@@ -59,8 +87,14 @@ func TestClient3E_Write(t *testing.T) {
 
 func TestClient3E_Ping(t *testing.T) {
 	// running only when there is and plc that can be accepted mc protocol
+	if testPLCHost == "" {
+		t.Skip("environment variable PLC_TEST_HOST is not set")
+	}
+	if testPLCPort == 0 {
+		t.Skip("environment variable PLC_TEST_PORT is not set")
+	}
 
-	client, err := New3EClient("10.23.3.117", 1280, NewLocalStation())
+	client, err := New3EClient(testPLCHost, testPLCPort, NewLocalStation())
 	if err != nil {
 		t.Fatalf("PLC does not exists? %v", err)
 	}

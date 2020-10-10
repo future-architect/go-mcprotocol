@@ -9,7 +9,7 @@ import (
 
 type Client interface {
 	Read(deviceName string, offset, numPoints int64) ([]byte, error)
-	Write(deviceName string, offset int64, writeData []byte) error
+	Write(deviceName string, offset, numPoints int64, writeData []byte) ([]byte, error)
 	HealthCheck() error
 }
 
@@ -116,29 +116,32 @@ func (c *client3E) Read(deviceName string, offset, numPoints int64) ([]byte, err
 // deviceName is device code name like 'D' register.
 // offset is device offset addr.
 // writeData is data to write.
-// If writeData is larger than 4 bytes, the fifth and subsequent bytes are ignored.
-func (c *client3E) Write(deviceName string, offset int64, writeData []byte) error {
-	requestStr := c.stn.BuildWriteRequest(deviceName, offset, writeData)
+// numPoints is number of write device points.
+// writeData is the data to be written. If writeData is larger than 2*numPoints bytes,
+// data larger than 2*numPoints bytes is ignored.
+func (c *client3E) Write(deviceName string, offset, numPoints int64, writeData []byte) ([]byte, error) {
+	requestStr := c.stn.BuildWriteRequest(deviceName, offset, numPoints, writeData)
 	payload, err := hex.DecodeString(requestStr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	conn, err := net.DialTCP("tcp", nil, c.tcpAddr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer conn.Close()
+
 	// Send message
 	if _, err = conn.Write(payload); err != nil {
-		return err
+		return nil, err
 	}
-	// FIX_ME: Receive return message
-	/*
-	   readBuff := make([]byte, 30)
-	   readLen, err := conn.Read(readBuff)
-	   if err != nil {
-	       return err
-	   }
-	*/
-	return nil
+
+	// Receive message
+	readBuff := make([]byte, 22) // 22 is response header size. [sub header + network num + unit i/o num + unit station num + response length + response code]
+
+	readLen, err := conn.Read(readBuff)
+	if err != nil {
+		return nil, err
+	}
+	return readBuff[:readLen], nil
 }
