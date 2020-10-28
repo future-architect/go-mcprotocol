@@ -5,12 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
+	"time"
 )
 
 type Client interface {
 	Read(deviceName string, offset, numPoints int64) ([]byte, error)
 	Write(deviceName string, offset, numPoints int64, writeData []byte) ([]byte, error)
 	HealthCheck() error
+	Connect() error
+	Close() error
 }
 
 // client3E is 3E frame mcp client
@@ -19,6 +23,13 @@ type client3E struct {
 	tcpAddr *net.TCPAddr
 	// PLC station
 	stn *station
+
+	// Connect & Read Write timeout
+	Timeout time.Duration
+
+	// TCP connection
+	mu   sync.Mutex
+	conn net.Conn
 }
 
 func New3EClient(host string, port int, stn *station) (Client, error) {
@@ -32,6 +43,9 @@ func New3EClient(host string, port int, stn *station) (Client, error) {
 // MELSECコミュニケーションプロトコル p180
 // 11.4折返しテスト
 func (c *client3E) HealthCheck() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	requestStr := c.stn.BuildHealthCheckRequest()
 
 	// binary protocol
@@ -40,21 +54,27 @@ func (c *client3E) HealthCheck() error {
 		return err
 	}
 
-	// TODO Keep-Alive
-	conn, err := net.DialTCP("tcp", nil, c.tcpAddr)
-	if err != nil {
+	// Connection established if not connect
+	if err = c.connect(); err != nil {
 		return err
 	}
-	defer conn.Close()
+
+	// Set write and read timeout if set timeout
+	if c.Timeout > 0 {
+		deadLine := time.Now().Add(c.Timeout)
+		if err = c.conn.SetDeadline(deadLine); err != nil {
+			return err
+		}
+	}
 
 	// Send message
-	if _, err = conn.Write(payload); err != nil {
+	if _, err = c.conn.Write(payload); err != nil {
 		return err
 	}
 
 	// Receive message
 	readBuff := make([]byte, 30)
-	readLen, err := conn.Read(readBuff)
+	readLen, err := c.conn.Read(readBuff)
 	if err != nil {
 		return err
 	}
@@ -83,6 +103,9 @@ func (c *client3E) HealthCheck() error {
 // offset is device offset addr.
 // numPoints is number of read device points.
 func (c *client3E) Read(deviceName string, offset, numPoints int64) ([]byte, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	requestStr := c.stn.BuildReadRequest(deviceName, offset, numPoints)
 
 	// TODO binary protocol
@@ -91,20 +114,27 @@ func (c *client3E) Read(deviceName string, offset, numPoints int64) ([]byte, err
 		return nil, err
 	}
 
-	conn, err := net.DialTCP("tcp", nil, c.tcpAddr)
-	if err != nil {
+	// Connection established if not connect
+	if err = c.connect(); err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+
+	// Set write and read timeout if set timeout
+	if c.Timeout > 0 {
+		deadLine := time.Now().Add(c.Timeout)
+		if err = c.conn.SetDeadline(deadLine); err != nil {
+			return nil, err
+		}
+	}
 
 	// Send message
-	if _, err = conn.Write(payload); err != nil {
+	if _, err = c.conn.Write(payload); err != nil {
 		return nil, err
 	}
 
 	// Receive message
 	readBuff := make([]byte, 22+2*numPoints) // 22 is response header size. [sub header + network num + unit i/o num + unit station num + response length + response code]
-	readLen, err := conn.Read(readBuff)
+	readLen, err := c.conn.Read(readBuff)
 	if err != nil {
 		return nil, err
 	}
@@ -120,28 +150,77 @@ func (c *client3E) Read(deviceName string, offset, numPoints int64) ([]byte, err
 // writeData is the data to be written. If writeData is larger than 2*numPoints bytes,
 // data larger than 2*numPoints bytes is ignored.
 func (c *client3E) Write(deviceName string, offset, numPoints int64, writeData []byte) ([]byte, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	requestStr := c.stn.BuildWriteRequest(deviceName, offset, numPoints, writeData)
 	payload, err := hex.DecodeString(requestStr)
 	if err != nil {
 		return nil, err
 	}
-	conn, err := net.DialTCP("tcp", nil, c.tcpAddr)
-	if err != nil {
+
+	// Connection established if not connect
+	if err = c.connect(); err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+
+	// Set write and read timeout if set timeout
+	if c.Timeout > 0 {
+		deadLine := time.Now().Add(c.Timeout)
+		if err = c.conn.SetDeadline(deadLine); err != nil {
+			return nil, err
+		}
+	}
 
 	// Send message
-	if _, err = conn.Write(payload); err != nil {
+	if _, err = c.conn.Write(payload); err != nil {
 		return nil, err
 	}
 
 	// Receive message
 	readBuff := make([]byte, 22) // 22 is response header size. [sub header + network num + unit i/o num + unit station num + response length + response code]
 
-	readLen, err := conn.Read(readBuff)
+	readLen, err := c.conn.Read(readBuff)
 	if err != nil {
 		return nil, err
 	}
+
 	return readBuff[:readLen], nil
+}
+
+// Close closes the connection. Close only if the connection exists.
+func (c *client3E) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.close()
+}
+
+// Connect establishes a new connection to the tcp Address.
+// Establishes a connection only if a connection has not been established.
+// If a connection already exists, no action is taken.
+func (c *client3E) Connect() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.connect()
+}
+
+func (c *client3E) connect() error {
+	if c.conn == nil {
+		dialer := net.Dialer{Timeout: c.Timeout}
+		conn, err := dialer.Dial("tcp", fmt.Sprintf("%s:%d", c.tcpAddr.IP.String(), c.tcpAddr.Port))
+		if err != nil {
+			return err
+		}
+		c.conn = conn
+	}
+	return nil
+}
+
+func (c *client3E) close() error {
+	var err error
+	if c.conn != nil {
+		err = c.conn.Close()
+		c.conn = nil
+	}
+	return err
 }
