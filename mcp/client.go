@@ -15,6 +15,7 @@ type Client interface {
 	HealthCheck() error
 	Connect() error
 	Close() error
+	SetTimeout(t time.Duration)
 }
 
 // client3E is 3E frame mcp client
@@ -25,7 +26,7 @@ type client3E struct {
 	stn *station
 
 	// Connect & Read Write timeout
-	Timeout time.Duration
+	timeout time.Duration
 
 	// TCP connection
 	mu   sync.Mutex
@@ -60,9 +61,9 @@ func (c *client3E) HealthCheck() error {
 	}
 
 	// Set write and read timeout if set timeout
-	if c.Timeout > 0 {
-		deadLine := time.Now().Add(c.Timeout)
-		if err = c.conn.SetDeadline(deadLine); err != nil {
+	if c.timeout > 0 {
+		deadline := time.Now().Add(c.timeout)
+		if err = c.conn.SetDeadline(deadline); err != nil {
 			return err
 		}
 	}
@@ -120,9 +121,9 @@ func (c *client3E) Read(deviceName string, offset, numPoints int64) ([]byte, err
 	}
 
 	// Set write and read timeout if set timeout
-	if c.Timeout > 0 {
-		deadLine := time.Now().Add(c.Timeout)
-		if err = c.conn.SetDeadline(deadLine); err != nil {
+	if c.timeout > 0 {
+		deadline := time.Now().Add(c.timeout)
+		if err = c.conn.SetDeadline(deadline); err != nil {
 			return nil, err
 		}
 	}
@@ -165,9 +166,9 @@ func (c *client3E) Write(deviceName string, offset, numPoints int64, writeData [
 	}
 
 	// Set write and read timeout if set timeout
-	if c.Timeout > 0 {
-		deadLine := time.Now().Add(c.Timeout)
-		if err = c.conn.SetDeadline(deadLine); err != nil {
+	if c.timeout > 0 {
+		deadline := time.Now().Add(c.timeout)
+		if err = c.conn.SetDeadline(deadline); err != nil {
 			return nil, err
 		}
 	}
@@ -204,9 +205,16 @@ func (c *client3E) Connect() error {
 	return c.connect()
 }
 
+// SetTimeout sets the timeout for dial, read and write.
+func (c *client3E) SetTimeout(t time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.timeout = t
+}
+
 func (c *client3E) connect() error {
 	if c.conn == nil {
-		dialer := net.Dialer{Timeout: c.Timeout}
+		dialer := net.Dialer{Timeout: c.timeout}
 		conn, err := dialer.Dial("tcp", fmt.Sprintf("%s:%d", c.tcpAddr.IP.String(), c.tcpAddr.Port))
 		if err != nil {
 			return err
