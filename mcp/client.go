@@ -86,19 +86,16 @@ func (c *client3E) HealthCheck() error {
 	resp := readBuff[:readLen]
 
 	if readLen != 18 {
-		_ = c.conn.Close()
 		return errors.New("plc connect test is fail: return length is [" + fmt.Sprintf("%X", resp) + "]")
 	}
 
 	// decodeString is 折返しデータ数ヘッダ[1byte]
 	if "0500" != fmt.Sprintf("%X", resp[11:13]) {
-		_ = c.conn.Close()
 		return errors.New("plc connect test is fail: return header is [" + fmt.Sprintf("%X", resp[11:13]) + "]")
 	}
 
 	//  折返しデータ[5byte]=ABCDE
 	if "4142434445" != fmt.Sprintf("%X", resp[13:18]) {
-		_ = c.conn.Close()
 		return errors.New("plc connect test is fail: return body is [" + fmt.Sprintf("%X", resp[13:18]) + "]")
 	}
 
