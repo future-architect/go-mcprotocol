@@ -13,6 +13,7 @@ You can read plc register bellow codes.
 ```go
 	client, _ := mcp.New3EClient(opts.Host, opts.Port, mcp.NewLocalStation())
 	read, _ := client.Read("D", 100, 3)
+	defer client.Close()
 	registerBinary, _ := mcp.NewParser().Do(read)
 
 	fmt.Println(string(registerBinary.Payload))
