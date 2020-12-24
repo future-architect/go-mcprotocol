@@ -64,14 +64,14 @@ func (c *client3E) HealthCheck() error {
 	if c.timeout > 0 {
 		deadline := time.Now().Add(c.timeout)
 		if err = c.conn.SetDeadline(deadline); err != nil {
-			_ = c.conn.Close()
+			_ = c.Close()
 			return err
 		}
 	}
 
 	// Send message
 	if _, err = c.conn.Write(payload); err != nil {
-		_ = c.conn.Close()
+		_ = c.Close()
 		return err
 	}
 
@@ -79,7 +79,7 @@ func (c *client3E) HealthCheck() error {
 	readBuff := make([]byte, 30)
 	readLen, err := c.conn.Read(readBuff)
 	if err != nil {
-		_ = c.conn.Close()
+		_ = c.Close()
 		return err
 	}
 
@@ -127,14 +127,14 @@ func (c *client3E) Read(deviceName string, offset, numPoints int64) ([]byte, err
 	if c.timeout > 0 {
 		deadline := time.Now().Add(c.timeout)
 		if err = c.conn.SetDeadline(deadline); err != nil {
-			_ = c.conn.Close()
+			_ = c.Close()
 			return nil, err
 		}
 	}
 
 	// Send message
 	if _, err = c.conn.Write(payload); err != nil {
-		_ = c.conn.Close()
+		_ = c.Close()
 		return nil, err
 	}
 
@@ -142,7 +142,7 @@ func (c *client3E) Read(deviceName string, offset, numPoints int64) ([]byte, err
 	readBuff := make([]byte, 22+2*numPoints) // 22 is response header size. [sub header + network num + unit i/o num + unit station num + response length + response code]
 	readLen, err := c.conn.Read(readBuff)
 	if err != nil {
-		_ = c.conn.Close()
+		_ = c.Close()
 		return nil, err
 	}
 
@@ -175,14 +175,14 @@ func (c *client3E) Write(deviceName string, offset, numPoints int64, writeData [
 	if c.timeout > 0 {
 		deadline := time.Now().Add(c.timeout)
 		if err = c.conn.SetDeadline(deadline); err != nil {
-			_ = c.conn.Close()
+			_ = c.Close()
 			return nil, err
 		}
 	}
 
 	// Send message
 	if _, err = c.conn.Write(payload); err != nil {
-		_ = c.conn.Close()
+		_ = c.Close()
 		return nil, err
 	}
 
@@ -191,7 +191,7 @@ func (c *client3E) Write(deviceName string, offset, numPoints int64, writeData [
 
 	readLen, err := c.conn.Read(readBuff)
 	if err != nil {
-		_ = c.conn.Close()
+		_ = c.Close()
 		return nil, err
 	}
 
