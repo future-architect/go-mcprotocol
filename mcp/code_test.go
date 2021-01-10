@@ -3,25 +3,44 @@ package mcp
 import (
 	"encoding/hex"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestCode_EncodeHex(t *testing.T) {
-	cases := []struct {
-		input    string
-		expected string
+	tests := []struct {
+		name      string
+		c         Code
+		inputCode string
+		want      string
+		wantErr   bool
 	}{
-		{input: "0401", expected: "0104"},
+		{name: "Binary mode", c: Binary, inputCode: "0401", want: "0104", wantErr: false},
+		{name: "Binary mode max value", c: Binary, inputCode: "FFFF", want: "ffff", wantErr: false},
+		{name: "Ascii mode", c: Ascii, inputCode: "0401", want: "0401", wantErr: false},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.c.EncodeHex(tt.inputCode)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("EncodeHex() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 
-	for _, v := range cases {
-		actual, err := Binary.EncodeHex(v.input)
-		if err != nil {
-			t.Errorf("something wrong: input is %v", v.input)
-			continue
-		}
+			var gotStr string
+			switch tt.c {
+			case Ascii:
+				gotStr = string(got)
+			case Binary:
+				gotStr = hex.EncodeToString(got)
+			default:
+				t.Errorf("not supported Code, Code is %v", tt.c)
+				return
+			}
 
-		if hex.EncodeToString(actual) != v.expected {
-			t.Errorf("wrong result: expected is %v but actual is %v", "0104", hex.EncodeToString(actual))
-		}
+			if diff := cmp.Diff(tt.want, gotStr); diff != "" {
+				t.Errorf("EncodeHex() mismatch (-want +got):\n%s", diff)
+			}
+		})
 	}
 }
