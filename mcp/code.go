@@ -1,9 +1,8 @@
 package mcp
 
 import (
-	"bytes"
 	"encoding/binary"
-	"encoding/hex"
+	"strconv"
 )
 
 // PLC Data communication code.
@@ -25,12 +24,12 @@ func (c Code) EncodeHex(s string) ([]byte, error) {
 		return []byte(s), nil
 	}
 
-	decode, err := hex.DecodeString(s)
+	hexCode, err := strconv.ParseUint(s, 16, 16)
 	if err != nil {
 		return nil, err
 	}
 
-	buff := new(bytes.Buffer)
-	_ = binary.Write(buff, binary.LittleEndian, decode)
-	return buff.Bytes(), nil
+	buff := make([]byte, 2)
+	binary.LittleEndian.PutUint16(buff, uint16(hexCode))
+	return buff, nil
 }
