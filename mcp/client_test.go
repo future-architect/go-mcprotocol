@@ -65,6 +65,49 @@ func TestClient3E_Read(t *testing.T) {
 
 }
 
+func TestClient3E_BitRead(t *testing.T) {
+	// running only when there is and plc that can be accepted mc protocol
+	if testPLCHost == "" {
+		t.Skip("environment variable PLC_TEST_HOST is not set")
+	}
+	if testPLCPort == 0 {
+		t.Skip("environment variable PLC_TEST_PORT is not set")
+	}
+
+	client, err := New3EClient(testPLCHost, testPLCPort, NewLocalStation())
+	if err != nil {
+		t.Fatalf("PLC does not exists? %v", err)
+	}
+
+	// 1 device
+	resp1, err := client.BitRead("D", 100, 1)
+	if err != nil {
+		t.Fatalf("unexpected mcp read err: %v", err)
+	}
+
+	if len(resp1) != 13 {
+		t.Fatalf("expected %v but actual is %v", 13, len(resp1))
+	}
+	if hex.EncodeToString(resp1) != strings.ReplaceAll("d000 00 ff ff03 0003 0000 0000 00", " ", "") {
+		t.Fatalf("expected %v but actual is %v", "d00000ffff0300030000000000", hex.EncodeToString(resp1))
+	}
+
+	// 3 device
+	resp2, err := client.BitRead("D", 100, 5)
+	if err != nil {
+		t.Fatalf("unexpected mcp read err: %v", err)
+	}
+
+	if len(resp2) != 17 {
+		t.Fatalf("expected %v but actual is %v", 17, len(resp2))
+	}
+
+	if hex.EncodeToString(resp2) != strings.ReplaceAll("d000 00 ff ff03 0007 0000 0000 0000000000", " ", "") {
+		t.Fatalf("expected %v but actual is %v", "d00000ffff03000c000000000000000000", hex.EncodeToString(resp2))
+	}
+
+}
+
 func TestClient3E_Write(t *testing.T) {
 	// running only when there is and plc that can be accepted mc protocol
 	if testPLCHost == "" {
