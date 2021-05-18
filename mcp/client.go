@@ -9,6 +9,7 @@ import (
 
 type Client interface {
 	Read(deviceName string, offset, numPoints int64) ([]byte, error)
+	BitRead(deviceName string, offset, numPoints int64) ([]byte, error)
 	Write(deviceName string, offset, numPoints int64, writeData []byte) ([]byte, error)
 	HealthCheck() error
 }
@@ -116,6 +117,7 @@ func (c *client3E) Read(deviceName string, offset, numPoints int64) ([]byte, err
 // deviceName is device code name like 'D' register.
 // offset is device offset addr.
 // numPoints is number of read device points.
+// results of payload of BitRead will return []byte contains 0, 1, 16 or 17(hex encoded 00, 01, 10, 11)
 func (c *client3E) BitRead(deviceName string, offset, numPoints int64) ([]byte, error) {
 	requestStr := c.stn.BuildBitReadRequest(deviceName, offset, numPoints)
 	// TODO binary protocol

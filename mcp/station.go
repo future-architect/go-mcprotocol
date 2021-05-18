@@ -14,7 +14,7 @@ const (
 
 	READ_COMMAND         = "0104" // binary mode expression. if ascii mode then 0401
 	READ_SUB_COMMAND     = "0000"
-	BIT_READ_SUB_COMMAND = "0001"
+	BIT_READ_SUB_COMMAND = "0100"
 
 	WRITE_COMMAND     = "0114" // binary mode expression. if ascii mode then 1401
 	WRITE_SUB_COMMAND = "0000"
@@ -150,7 +150,7 @@ func (h *station) BuildBitReadRequest(deviceName string, offset, numPoints int64
 	points := fmt.Sprintf("%X", pointsBuff.Bytes()[0:2]) // 2byte固定
 
 	// data length
-	requestCharLen := len(MONITORING_TIMER+READ_COMMAND+READ_SUB_COMMAND+deviceCode+offsetHex+points) / 2 // 1byte=2char
+	requestCharLen := len(MONITORING_TIMER+READ_COMMAND+BIT_READ_SUB_COMMAND+deviceCode+offsetHex+points) / 2 // 1byte=2char
 	dataLenBuff := new(bytes.Buffer)
 	_ = binary.Write(dataLenBuff, binary.LittleEndian, int64(requestCharLen))
 	dataLen := fmt.Sprintf("%X", dataLenBuff.Bytes()[0:2]) // 2byte固定

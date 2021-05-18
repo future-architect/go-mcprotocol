@@ -80,32 +80,45 @@ func TestClient3E_BitRead(t *testing.T) {
 	}
 
 	// 1 device
-	resp1, err := client.BitRead("D", 100, 1)
+	resp1, err := client.BitRead("B", 0, 1)
 	if err != nil {
 		t.Fatalf("unexpected mcp read err: %v", err)
 	}
 
-	if len(resp1) != 13 {
-		t.Fatalf("expected %v but actual is %v", 13, len(resp1))
+	if len(resp1) != 12 {
+		t.Fatalf("expected %v but actual is %v", 12, len(resp1))
 	}
-	if hex.EncodeToString(resp1) != strings.ReplaceAll("d000 00 ff ff03 0003 0000 0000 00", " ", "") {
-		t.Fatalf("expected %v but actual is %v", "d00000ffff0300030000000000", hex.EncodeToString(resp1))
+	if hex.EncodeToString(resp1) != strings.ReplaceAll("d000 00 ff ff03 0003 0000 0000", " ", "") {
+		t.Fatalf("expected %v but actual is %v", "d00000ffff03000300000000", hex.EncodeToString(resp1))
 	}
 
 	// 3 device
-	resp2, err := client.BitRead("D", 100, 5)
+	resp2, err := client.BitRead("B", 0, 5)
 	if err != nil {
 		t.Fatalf("unexpected mcp read err: %v", err)
 	}
 
-	if len(resp2) != 17 {
-		t.Fatalf("expected %v but actual is %v", 17, len(resp2))
+	if len(resp2) != 14 {
+		t.Fatalf("expected %v but actual is %v", 14, len(resp2))
 	}
 
-	if hex.EncodeToString(resp2) != strings.ReplaceAll("d000 00 ff ff03 0007 0000 0000 0000000000", " ", "") {
-		t.Fatalf("expected %v but actual is %v", "d00000ffff03000c000000000000000000", hex.EncodeToString(resp2))
+	if hex.EncodeToString(resp2) != strings.ReplaceAll("d000 00 ff ff03 0005 0000 0000 0000", " ", "") {
+		t.Fatalf("expected %v but actual is %v", "d00000ffff030005000000000000", hex.EncodeToString(resp2))
 	}
 
+	// numpoints 5 and 6 will return same responce length
+	resp3, err := client.BitRead("B", 0, 6)
+	if err != nil {
+		t.Fatalf("unexpected mcp read err: %v", err)
+	}
+
+	if len(resp2) != 14 {
+		t.Fatalf("expected %v but actual is %v", 14, len(resp3))
+	}
+
+	if hex.EncodeToString(resp2) != strings.ReplaceAll("d000 00 ff ff03 0005 0000 0000 0000", " ", "") {
+		t.Fatalf("expected %v but actual is %v", "d00000ffff030005000000000000", hex.EncodeToString(resp3))
+	}
 }
 
 func TestClient3E_Write(t *testing.T) {
