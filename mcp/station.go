@@ -12,8 +12,9 @@ const (
 	HEALTH_CHECK_COMMAND    = "1906" // binary mode expression. if ascii mode then 0619
 	HEALTH_CHECK_SUBCOMMAND = "0000"
 
-	READ_COMMAND     = "0104" // binary mode expression. if ascii mode then 0401
-	READ_SUB_COMMAND = "0000"
+	READ_COMMAND         = "0104" // binary mode expression. if ascii mode then 0401
+	READ_SUB_COMMAND     = "0000"
+	BIT_READ_SUB_COMMAND = "0100"
 
 	WRITE_COMMAND     = "0114" // binary mode expression. if ascii mode then 1401
 	WRITE_SUB_COMMAND = "0000"
@@ -88,7 +89,7 @@ func (h *station) BuildHealthCheckRequest() string {
 		requestStr
 }
 
-// BuildReadRequest represents MCP read command.
+// BuildReadRequest represents MCP read as word command.
 // deviceName is device code name like 'D' register.
 // offset is device offset addr.
 // numPoints is number of read device points.
@@ -123,6 +124,46 @@ func (h *station) BuildReadRequest(deviceName string, offset, numPoints int64) s
 		MONITORING_TIMER +
 		READ_COMMAND +
 		READ_SUB_COMMAND +
+		offsetHex +
+		deviceCode +
+		points
+}
+
+// BuildReadRequest represents MCP read as bit command.
+// deviceName is device code name like 'D' register.
+// offset is device offset addr.
+// numPoints is number of read device points.
+func (h *station) BuildBitReadRequest(deviceName string, offset, numPoints int64) string {
+
+	// get device symbol hex layout
+	deviceCode := deviceCodes[deviceName]
+
+	// offset convert to little endian layout
+	// MELSECコミュニケーションプロトコル リファレンス(p67) MELSEC-Q/L: 3[byte], MELSEC iQ-R: 4[byte]
+	offsetBuff := new(bytes.Buffer)
+	_ = binary.Write(offsetBuff, binary.LittleEndian, offset)
+	offsetHex := fmt.Sprintf("%X", offsetBuff.Bytes()[0:3]) // 仮にQシリーズとするので3byte trim
+
+	// read points
+	pointsBuff := new(bytes.Buffer)
+	_ = binary.Write(pointsBuff, binary.LittleEndian, numPoints)
+	points := fmt.Sprintf("%X", pointsBuff.Bytes()[0:2]) // 2byte固定
+
+	// data length
+	requestCharLen := len(MONITORING_TIMER+READ_COMMAND+BIT_READ_SUB_COMMAND+deviceCode+offsetHex+points) / 2 // 1byte=2char
+	dataLenBuff := new(bytes.Buffer)
+	_ = binary.Write(dataLenBuff, binary.LittleEndian, int64(requestCharLen))
+	dataLen := fmt.Sprintf("%X", dataLenBuff.Bytes()[0:2]) // 2byte固定
+
+	return SUB_HEADER +
+		h.networkNum +
+		h.pcNum +
+		h.unitIONum +
+		h.unitStationNum +
+		dataLen +
+		MONITORING_TIMER +
+		READ_COMMAND +
+		BIT_READ_SUB_COMMAND +
 		offsetHex +
 		deviceCode +
 		points
